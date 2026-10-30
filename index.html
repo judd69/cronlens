@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CronLens — Cron expressions, decoded before you deploy</title>
+    <meta name="description" content="Paste a cron expression and see it in plain English, its next run times, and the gotchas that silently break schedules. Runs entirely in your browser." />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#"><span class="dot"></span>CronLens</a>
+      <nav>
+        <a href="#explain">Explain</a>
+        <a href="#builder">Builder</a>
+        <a href="#gotchas">Gotchas</a>
+      </nav>
+      <a class="gh" href="https://github.com/judd69/cronlens">GitHub ↗</a>
+    </header>
+
+    <main>
+      <section class="hero" id="explain">
+        <p class="eyebrow">Paste it. Read it. Trust it.</p>
+        <h1>Cron,<br />decoded.</h1>
+        <p class="lede">Five cryptic fields, one honest answer: what this schedule <em>actually</em> does, when it runs next, and which trap it is hiding — before you deploy it and find out at 3am.</p>
+
+        <div class="input-card">
+          <label for="expr">Cron expression</label>
+          <div class="input-row">
+            <input id="expr" type="text" value="0 9 * * 1-5" autocomplete="off" spellcheck="false" aria-describedby="field-pills" />
+            <button id="copy-expr" class="btn btn-dark">Copy</button>
+          </div>
+          <div class="pills" id="field-pills" role="group" aria-label="Fields">
+            <button data-field="0">Minute</button>
+            <button data-field="1">Hour</button>
+            <button data-field="2">Day of month</button>
+            <button data-field="3">Month</button>
+            <button data-field="4">Day of week</button>
+            <span class="pill-marker" id="pill-marker" aria-hidden="true"></span>
+          </div>
+          <p class="hint">Click a field pill to jump to that field. Shortcuts work too: <code>@daily</code>, <code>@weekly</code>, <code>@hourly</code>, <code>@reboot</code>.</p>
+          <div class="presets" id="presets"></div>
+        </div>
+
+        <div id="error-box" class="error-box hidden"></div>
+
+        <div id="result" class="result">
+          <div class="verdict-card">
+            <p class="verdict-label">In plain English</p>
+            <p class="verdict" id="verdict">—</p>
+            <div class="verdict-meta">
+              <span id="next-run">—</span>
+              <span id="freq">—</span>
+              <span id="tz-note">—</span>
+            </div>
+            <div class="actions">
+              <button id="copy-summary" class="btn btn-orange">Copy summary</button>
+              <button id="copy-crontab" class="btn btn-light">Copy crontab line</button>
+              <button id="copy-link" class="btn btn-light">Copy share link</button>
+            </div>
+          </div>
+
+          <div class="grid-two">
+            <section class="card">
+              <h2>Next 10 runs</h2>
+              <ol class="runs" id="runs"></ol>
+            </section>
+            <section class="card">
+              <h2>Field by field</h2>
+              <table class="fields-table" id="fields-table"></table>
+            </section>
+          </div>
+
+          <section class="card">
+            <h2>Next 7 days at a glance</h2>
+            <p class="card-note">Every run time in the coming week, in your local timezone.</p>
+            <div class="week" id="week"></div>
+          </section>
+
+          <section class="card card-dark" id="gotchas">
+            <h2>Gotcha detector</h2>
+            <p class="card-note">The traps that pass code review and still fire at the wrong time.</p>
+            <ul class="gotchas" id="gotchas-list"></ul>
+          </section>
+        </div>
+      </section>
+
+      <section class="builder card" id="builder">
+        <h2>Build one instead</h2>
+        <p class="card-note">Pick a pattern, set the time, and CronLens writes the expression for you.</p>
+        <div class="builder-grid">
+          <label>Pattern
+            <select id="b-pattern">
+              <option value="every-minute">Every minute</option>
+              <option value="every-n">Every N minutes</option>
+              <option value="hourly">Hourly</option>
+              <option value="daily">Daily</option>
+              <option value="weekdays" selected>Weekdays</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </label>
+          <label id="b-n-wrap">Every N minutes
+            <input id="b-n" type="number" min="2" max="59" value="15" />
+          </label>
+          <label id="b-minute-wrap">Minute
+            <input id="b-minute" type="number" min="0" max="59" value="0" />
+          </label>
+          <label id="b-hour-wrap">Hour (24h)
+            <input id="b-hour" type="number" min="0" max="23" value="9" />
+          </label>
+          <label id="b-dow-wrap">Weekday
+            <select id="b-dow">
+              <option value="0">Sunday</option>
+              <option value="1" selected>Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </label>
+          <label id="b-dom-wrap">Day of month
+            <input id="b-dom" type="number" min="1" max="31" value="1" />
+          </label>
+          <label id="b-month-wrap">Month
+            <select id="b-month">
+              <option value="1" selected>January</option><option value="2">February</option>
+              <option value="3">March</option><option value="4">April</option>
+              <option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option>
+              <option value="9">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+          </label>
+        </div>
+        <div class="builder-out">
+          <code id="b-output">0 9 * * 1-5</code>
+          <button id="b-apply" class="btn btn-orange">Use this expression ↑</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Try a trap</h2>
+        <p class="card-note">Four expressions that look right and are not — click one to dissect it.</p>
+        <div class="traps" id="traps"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>CronLens runs entirely in your browser. No server, no signup, nothing leaves this page.</p>
+      <p>Standard 5-field crontab semantics. Quartz/Spring 6-field expressions are flagged, not silently accepted.</p>
+    </footer>
+
+    <div class="toast hidden" id="toast" role="status"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
